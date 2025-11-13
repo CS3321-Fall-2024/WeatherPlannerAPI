@@ -1,7 +1,12 @@
+import os
+import requests
+
 from quart import Quart, request, jsonify
 from suggestion import Suggestion
 
 app = Quart(__name__)
+
+api_key = os.getenv("WEATHER_API_KEY")
 
 @app.post("/location")
 async def post_location():
@@ -23,17 +28,25 @@ async def get_activities():
     # TODO: get weather and suggest possible activities
     return
 
+def get_weather(city):
+    url = f"http://api.weatherapi.com/v1/current.json?key={api_key}&q={city}"
+    res = requests.get(url).json()
+    return res
+
+weather = get_weather("Seattle")
+print(weather)
+
 def find_activity(temp, wind, precipitation):
     """Returns the first valid activity based on the weather"""
     for a in activity_list():
-        if (a.check_bound("temp", round(temp)) and a.check_bound("wind", round(wind)) and a.check_precipitation(precipitation):
+        if (a.check_bound("temp", round(temp)) and a.check_bound("wind", round(wind)) and a.check_precipitation(precipitation)):
             return a
     return None
 
 def find_outfit(temp, wind, precipitation):
     """Returns the first valid outfit based on the weather"""
     for o in outfit_list():
-        if (o.check_bound("temp", round(temp)) and o.check_bound("wind", round(wind)) and o.check_precipitation(precipitation):
+        if (o.check_bound("temp", round(temp)) and o.check_bound("wind", round(wind)) and o.check_precipitation(precipitation)):
             return o
     return None
 
