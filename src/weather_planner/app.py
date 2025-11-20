@@ -2,7 +2,7 @@ import os
 import requests
 
 from quart import Quart, request, jsonify
-from suggestion import Suggestion
+from .suggestion import Suggestion
 
 app = Quart(__name__)
 
@@ -77,9 +77,9 @@ def activity_list():
     "clear",
     "cloudy"]
     activities[2].precipitation = [
-    "rainy"]
+    "rain", "rainy"]
     activities[3].precipitation = [
-    "snowy"]
+    "snow", "snowy"]
 
     return activities
     
