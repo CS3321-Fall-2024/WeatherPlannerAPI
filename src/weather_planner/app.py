@@ -1,17 +1,31 @@
 import os
+from pydantic import BaseModel
 import requests
 
-from quart import Quart, request, jsonify
 from .suggestion import Suggestion
+from fastapi import Depends, FastAPI
 
-app = Quart(__name__)
+app = FastAPI()
 
 api_key = os.getenv("WEATHER_API_KEY")
 
-@app.post("/location")
-async def post_location():
+class LocationData(BaseModel):
+    city: str
+
+class WeatherData(BaseModel):
+    days: int
+    date: str
+    temperature: float
+    wind_speed: float
+    precipitation: str
+
+@app.get("/location")
+async def get_location(city: str):
     # TODO: accept user locaton data and record it for use in weather lookups
-    return
+
+    url = f"http://api.weatherapi.com/v1/timezone.json?key={api_key}&q={city}"
+    response = requests.get(url)
+    return response.json()
 
 @app.get("/clothing")
 async def get_clothing_suggestions():
@@ -19,19 +33,60 @@ async def get_clothing_suggestions():
     return
 
 @app.get("/forecast")
-async def get_forecast():
+async def get_forecast(city: str):    
     # TODO: get forecast for the next 14 days
-    return
 
-@app.get("/activities")
-async def get_activities():
-    # TODO: get weather and suggest possible activities
-    return
+    url = f"http://api.weatherapi.com/v1/forecast.json?key={api_key}&q={city}&days=14"
+    response = requests.get(url)
+    return response.json()
+
+@app.post("/activities")
+async def get_activities(city_request: LocationData):
+    # TODO: Recommend activities based on weather and suggest possible activities
+
+    city = city_request.city
+    data = get_weather(city)
+
+    temp = data['current']['temp_f']
+    wind = data['current']['wind_mph']
+    precipitation_rawdata = data['current']['condition']['text'].lower()
+    precipitation = normalize_precipitation(precipitation_rawdata)
+
+    activity = find_activity(temp, wind, precipitation)
+
+    if activity is None:
+        return {
+            "city": city,
+            "temperature": temp,
+            "wind_speed": wind,
+            "precipitation": precipitation,
+            "suggested_activity": "none",
+            "activity_message": "No suitable activities found for the current weather."
+        }
+
+    return {"city": city,
+            "temperature": temp,
+            "wind_speed": wind,
+            "precipitation": precipitation,
+            "suggested_activity": activity.name,
+            "activity_message": activity.message}
 
 def get_weather(city):
     url = f"http://api.weatherapi.com/v1/current.json?key={api_key}&q={city}"
     res = requests.get(url).json()
     return res
+
+def normalize_precipitation(precipitation):
+    """Normalize precipitation description to match suggestion conditions"""
+    precipitation = precipitation.lower()
+    if "rain" in precipitation:
+        return "rainy"
+    if "snow" in precipitation:
+        return "snowy"
+    if "cloud" in precipitation or "overcast" in precipitation:
+        return "cloudy"
+    else:
+        return "clear"
 
 weather = get_weather("Seattle")
 print(weather)
