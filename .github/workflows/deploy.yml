@@ -2,7 +2,8 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [  "main"  ]
+    branches: 
+      - "**"
 env:
   DOCKER_IMAGE: ${{  secrets.DOCKER_HUB_USERNAME }}/weather_planner_app
 
