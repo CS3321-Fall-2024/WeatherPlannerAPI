@@ -8,17 +8,28 @@ if ROOT not in sys.path:
 
 from src.weather_planner.app import (
     find_activity,
-    find_outfit,
-    activity_list,
-    outfit_list)
+    find_outfit)
 
 @pytest.mark.parametrize("temp, wind, precipitation, expected_activity", [
     (80, 5, "clear", "swimming"),
+    (55, 5, "clear", "walk"),
     (30, 10, "rainy", "read"),
     (20, 5, "snowy", "snowman"),
 ])
 
 def test_find_activity(temp, wind, precipitation, expected_activity):
     #activities = activity_list()
-    result = find_activity(temp, wind, precipitation,)
+    result = find_activity(temp, wind, precipitation)
     assert result.name == expected_activity
+
+@pytest.mark.parametrize("temp, wind, precipitation, expected_outfit", [
+    (85, 5, "clear", "shorts"),
+    (45, 15, "cloudy", "sweater"),
+    (25, 10, "rainy", "raincoat"),
+    (-15, 10, "snowy", "coat"),
+])
+
+def test_find_outfit(temp, wind, precipitation, expected_outfit):
+
+    result = find_outfit(temp, wind, precipitation)
+    assert result.name == expected_outfit

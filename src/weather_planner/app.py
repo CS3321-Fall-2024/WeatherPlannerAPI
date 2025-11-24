@@ -1,6 +1,7 @@
 import os
 from pydantic import BaseModel
 import requests
+import secrets
 
 from .suggestion import Suggestion
 from fastapi import Depends, FastAPI
@@ -27,11 +28,6 @@ async def get_location(city: str):
     response = requests.get(url)
     return response.json()
 
-@app.get("/clothing")
-async def get_clothing_suggestions():
-    # TODO: get weather data and use it to look up clothing suggestions
-    return
-
 @app.get("/forecast")
 async def get_forecast(city: str):    
     # TODO: get forecast for the next 14 days
@@ -40,8 +36,39 @@ async def get_forecast(city: str):
     response = requests.get(url)
     return response.json()
 
+@app.post("/clothing")
+async def post_clothing_suggestions(city_request : LocationData):
+    # TODO: get weather data and use it to look up clothing suggestions
+
+    city = city_request.city
+    data = get_weather(city)
+
+    temp = data['current']['temp_f']
+    wind = data['current']['wind_mph'] 
+    precipitation_rawdata = data['current']['condition']['text'].lower()
+    precipitation = normalize_precipitation(precipitation_rawdata)
+
+    outfit = find_outfit(temp, wind, precipitation)
+
+    if outfit is None:
+        return {
+            "city": city,
+            "temperature": temp,
+            "wind_speed": wind,
+            "precipitation": precipitation,
+            "suggested_outfit": "none",
+            "outfit_message": "No suitable oufit found for the current weather."
+        }
+
+    return {"city": city,
+            "temperature": temp,
+            "wind_speed": wind,
+            "precipitation": precipitation,
+            "suggested_outfit": outfit.name,
+            "outfit_message": outfit.message}
+
 @app.post("/activities")
-async def get_activities(city_request: LocationData):
+async def post_activities(city_request: LocationData):
     # TODO: Recommend activities based on weather and suggest possible activities
 
     city = city_request.city
