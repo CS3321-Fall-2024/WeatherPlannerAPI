@@ -68,9 +68,9 @@ jobs:
             
             sudo systemctl start docker
             
-            sudo docker stop weather_planner_app
-            sudo docker rm weather_planner_app
-            sudo docker rmi ${{ env.DOCKER_IMAGE }}
+            sudo docker stop weather_planner_app || True
+            sudo docker rm weather_planner_app || True
+            sudo docker rmi ${{ env.DOCKER_IMAGE }} || True
             
             sudo docker pull ${{ env.DOCKER_IMAGE }}:latest
             
