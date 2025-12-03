@@ -68,9 +68,12 @@ jobs:
             
             sudo systemctl start docker
             
+            sudo docker stop $(docker ps -q)
+            sudo docker rm $(docker ps -aq)
+            
             sudo docker pull ${{ env.DOCKER_IMAGE }}:latest
-            sudo docker stop weather_planner_app || true
-            sudo docker rm weather_planner_app || true
+            
             sudo docker run -d -e DOPPLER_TOKEN=${{ secrets.DOPPLER_TOKEN }} -p 80:8000 --name weather_planner_app ${{ env.DOCKER_IMAGE }}:latest
             
             sudo systemctl stop docker
+            sudo systemctl stop docker.socket
