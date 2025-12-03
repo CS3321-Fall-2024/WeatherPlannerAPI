@@ -84,9 +84,9 @@ jobs:
             
             sudo systemctl start docker
             
-            docker pull ${{ env.DOCKER_IMAGE }}:latest
-            docker stop weather_planner_app || true
-            docker rm weather_planner_app || true
-            docker run -d -e DOPPLER_TOKEN=${{ secrets.DOPPLER_TOKEN }} -p 80:8000 --name weather_planner_app ${{ env.DOCKER_IMAGE }}:latest
+            sudo docker pull ${{ env.DOCKER_IMAGE }}:latest
+            sudo docker stop weather_planner_app || true
+            sudo docker rm weather_planner_app || true
+            sudo docker run -d -e DOPPLER_TOKEN=${{ secrets.DOPPLER_TOKEN }} -p 80:8000 --name weather_planner_app ${{ env.DOCKER_IMAGE }}:latest
             
             sudo systemctl stop docker
