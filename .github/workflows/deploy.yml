@@ -47,11 +47,34 @@ jobs:
   
       - name: Push Image to Docker Hub
         run: docker push ${{ env.DOCKER_IMAGE }}:latest
-        
+      
+  #?) Checks if server has Docker installed, and installs it if not      
+  setupserver:
+    runs-on: ubuntu-latest
+    environment: devtest
+    
+    steps:
+      - name: Set Up Server
+        uses: appleboy/ssh-action@v1.2.4
+        with:
+            host: ${{ secrets.AWS_ADDRESS }}
+            username: ${{ secrets.AWS_USERNAME }}
+            key: ${{ secrets.AWS_PEM }}
+            script: |
+
+                if [[ $(which docker) && $(docker --version) ]]; then
+                    echo "Docker Installed"
+                    sudo docker --version
+                else
+                    sudo apt-get update -y
+                    sudo apt-get install docker.io -y
+                fi
+
+   
   #3) Deploy to AWS
   deploy:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, setupserver]
     environment: devtest
     
     steps:
@@ -63,9 +86,6 @@ jobs:
           key: ${{ secrets.AWS_PEM }}
           script: |
             
-            sudo apt-get update -y
-            sudo apt-get install docker.io -y
-            
             sudo systemctl start docker
             
             sudo docker stop weather_planner_app || True
@@ -76,5 +96,5 @@ jobs:
             
             sudo docker run -d -e DOPPLER_TOKEN=${{ secrets.DOPPLER_TOKEN }} -p 80:8000 --name weather_planner_app ${{ env.DOCKER_IMAGE }}:latest
             
-            sudo systemctl stop docker
-            sudo systemctl stop docker.socket
+            sudo docker ps
+            sudo docker images
