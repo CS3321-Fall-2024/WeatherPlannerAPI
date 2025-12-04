@@ -88,9 +88,9 @@ jobs:
             
             sudo systemctl start docker
             
-            sudo docker stop weather_planner_app || True
-            sudo docker rm weather_planner_app || True
-            sudo docker rmi ${{ env.DOCKER_IMAGE }} || True
+            sudo docker stop weather_planner_app || true
+            sudo docker rm weather_planner_app || true
+            sudo docker rmi ${{ env.DOCKER_IMAGE }} || true
             
             sudo docker pull ${{ env.DOCKER_IMAGE }}:latest
             
@@ -99,5 +99,47 @@ jobs:
             sudo docker ps
             sudo docker images
             
-      - name: Verify Deployment
-        run: curl http://${{ secrets.AWS_ADDRESS }}:80/location?city=Boise
+  #4) Tests Deployment
+  testdeploy:
+    runs-on: ubuntu-latest
+    needs: deploy
+    environment: devtest
+    
+    steps:
+    
+        #Start by SSHing back into the AWS server and verifying that you can access the openapi schema from localhost
+        #This verifies that the container is running locally on the AWS server
+        
+      - name: Verify Container Running
+        uses: appleboy/ssh-action@v1.2.4
+        with:
+          host: ${{ secrets.AWS_ADDRESS }}
+          username: ${{ secrets.AWS_USERNAME }}
+          key: ${{ secrets.AWS_PEM }}
+          script: |
+            sleep 10
+            curl -f http://localhost/openapi.json
+            
+        #Next work through each endpoint and test each one with a single arbitrary example as if we were curling the api from the ubuntu shell
+        #This is not performing unit testing or showing application functionality
+        #This verifies that the container running on the AWS server has ports configured correctly and each endpoint can be reached from an external user without raising any HTTP errors
+        
+      - name: Testing Location Endpoint with Single Example (Boise)
+        run: |
+            sleep 10
+            curl -f http://${{ secrets.AWS_ADDRESS }}/location?city=Boise
+            
+      - name: Testing Forecast Endpoint with Single Example (Denver)
+        run: |
+            sleep 10
+            curl -f http://${{ secrets.AWS_ADDRESS }}/forecast?city=Denver
+            
+      - name: Testing Clothing Endpoint with Single Example (Phoenix)
+        run: |
+            sleep 10
+            curl -f -X POST http://${{ secrets.AWS_ADDRESS }}/clothing -H "Content-Type: application/json" -d '{"city":"Phoenix"}'
+        
+      - name: Testing Activities Endpoint with Single Example (Washington)
+        run: |
+            sleep 10
+            curl -f -X POST http://${{ secrets.AWS_ADDRESS }}/activities -H "Content-Type: application/json" -d '{"city":"Washington"}'
