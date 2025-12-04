@@ -94,7 +94,7 @@ jobs:
             
             sudo docker pull ${{ env.DOCKER_IMAGE }}:latest
             
-            sudo docker run -d -e DOPPLER_TOKEN=${{ secrets.DOPPLER_TOKEN }} -p 80:8000 --name weather_planner_app ${{ env.DOCKER_IMAGE }}:latest
+            sudo docker run -d -e DOPPLER_TOKEN=${{ secrets.DOPPLER_TOKEN }} -p 8000:8000 --name weather_planner_app ${{ env.DOCKER_IMAGE }}:latest
             
             sudo docker ps
             sudo docker images
