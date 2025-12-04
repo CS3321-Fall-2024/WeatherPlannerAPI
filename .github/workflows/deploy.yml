@@ -1,0 +1,145 @@
+name: CI/CD Pipeline
+on:
+  push:
+    branches: 
+      - "**"
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/weather_planner_app
+jobs:
+  #1) Test Job
+  test:
+    runs-on: ubuntu-latest
+  
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+  
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+  
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+  
+      - name: Run Tests
+        run: pytest
+        
+  #2) Build and Push to Docker Hub
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+  
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+  
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+  
+      - name: Build Docker Image
+        run: docker build -t ${{ env.DOCKER_IMAGE }}:latest .
+  
+      - name: Push Image to Docker Hub
+        run: docker push ${{ env.DOCKER_IMAGE }}:latest
+      
+  #?) Checks if server has Docker installed, and installs it if not      
+  setupserver:
+    runs-on: ubuntu-latest
+    environment: devtest
+    
+    steps:
+      - name: Set Up Server
+        uses: appleboy/ssh-action@v1.2.4
+        with:
+            host: ${{ secrets.AWS_ADDRESS }}
+            username: ${{ secrets.AWS_USERNAME }}
+            key: ${{ secrets.AWS_PEM }}
+            script: |
+
+                if [[ $(which docker) && $(docker --version) ]]; then
+                    echo "Docker Installed"
+                    sudo docker --version
+                else
+                    sudo apt-get update -y
+                    sudo apt-get install docker.io -y
+                fi
+
+   
+  #3) Deploy to AWS - trying to build docker container to speak to port 80?
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build, setupserver]
+    environment: devtest
+    
+    steps:
+      - name: Deploy Image
+        uses: appleboy/ssh-action@v1.2.4
+        with:
+          host: ${{ secrets.AWS_ADDRESS }}
+          username: ${{ secrets.AWS_USERNAME }}
+          key: ${{ secrets.AWS_PEM }}
+          script: |
+            
+            sudo systemctl start docker
+            
+            sudo docker stop weather_planner_app || true
+            sudo docker rm weather_planner_app || true
+            sudo docker rmi ${{ env.DOCKER_IMAGE }} || true
+            
+            sudo docker pull ${{ env.DOCKER_IMAGE }}:latest
+            
+            sudo docker run -d -e DOPPLER_TOKEN=${{ secrets.DOPPLER_TOKEN }} -p 80:8000 --name weather_planner_app ${{ env.DOCKER_IMAGE }}:latest
+            
+            sudo docker ps
+            sudo docker images
+            
+  #4) Tests Deployment
+  testdeploy:
+    runs-on: ubuntu-latest
+    needs: deploy
+    environment: devtest
+    
+    steps:
+    
+        #Start by SSHing back into the AWS server and verifying that you can access the openapi schema from localhost
+        #This verifies that the container is running locally on the AWS server
+        
+      - name: Verify Container Running
+        uses: appleboy/ssh-action@v1.2.4
+        with:
+          host: ${{ secrets.AWS_ADDRESS }}
+          username: ${{ secrets.AWS_USERNAME }}
+          key: ${{ secrets.AWS_PEM }}
+          script: |
+            sleep 10
+            curl -f http://localhost/openapi.json
+            
+        #Next work through each endpoint and test each one with a single arbitrary example as if we were curling the api from the ubuntu shell
+        #This is not performing unit testing or showing application functionality
+        #This verifies that the container running on the AWS server has ports configured correctly and each endpoint can be reached from an external user without raising any HTTP errors
+        
+      - name: Testing Location Endpoint with Single Example (Boise)
+        run: |
+            sleep 10
+            curl -f http://${{ secrets.AWS_ADDRESS }}/location?city=Boise
+            
+      - name: Testing Forecast Endpoint with Single Example (Denver)
+        run: |
+            sleep 10
+            curl -f http://${{ secrets.AWS_ADDRESS }}/forecast?city=Denver
+            
+      - name: Testing Clothing Endpoint with Single Example (Phoenix)
+        run: |
+            sleep 10
+            curl -f -X POST http://${{ secrets.AWS_ADDRESS }}/clothing -H "Content-Type: application/json" -d '{"city":"Phoenix"}'
+        
+      - name: Testing Activities Endpoint with Single Example (Washington)
+        run: |
+            sleep 10
+            curl -f -X POST http://${{ secrets.AWS_ADDRESS }}/activities -H "Content-Type: application/json" -d '{"city":"Washington"}'
