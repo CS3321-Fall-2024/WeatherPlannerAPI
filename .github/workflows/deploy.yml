@@ -98,3 +98,6 @@ jobs:
             
             sudo docker ps
             sudo docker images
+            
+      - name: Verify Deployment
+        run: curl http://${{ secrets.AWS_ADDRESS }}:80/location?city=Boise
