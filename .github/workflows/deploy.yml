@@ -71,7 +71,7 @@ jobs:
                 fi
 
    
-  #3) Deploy to AWS
+  #3) Deploy to AWS - trying to build docker container to speak to port 80?
   deploy:
     runs-on: ubuntu-latest
     needs: [build, setupserver]
